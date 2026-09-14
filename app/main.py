@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from .models import Task
+from .models import Priority
 
 app = FastAPI(
   title="Task Management API",
@@ -41,9 +42,21 @@ def greeting():
   }
 
 @app.get("/tasks")
-def get_tasks():
+def get_tasks(completed : bool | None = None, priority : Priority | None = None, search : str | None = None):
+  if completed is None and priority is None and search is None:
+    return {
+      "tasks" : tasks
+    }
+  get_list = []
+  for task in tasks:
+   if (
+     (completed is None or task["completed"] == completed) and
+     (priority is None or task["priority"] == priority) and
+     (search is None or search.lower() in task["title"].lower() or search.lower() in task["description"].lower())):
+        get_list.append(task)
+        
   return {
-    "tasks" : tasks
+    "tasks" : get_list
   }
 
 @app.get("/tasks/{task_id}")
