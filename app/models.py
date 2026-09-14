@@ -14,3 +14,18 @@ class Task(BaseModel):
   priority : Priority
   completed : bool = False
   due_date : date
+  
+class TaskBody(BaseModel):
+  id : int
+  title : str
+  description : str
+  priority : Priority
+  completed : bool
+  due_date : date
+
+class TaskResponse(BaseModel):
+  message : str
+  task : TaskBody
+  
+class TaskListResponse(BaseModel):
+  tasks : list[TaskBody]
