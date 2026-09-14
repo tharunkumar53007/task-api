@@ -45,3 +45,7 @@ class TaskUpdate(BaseModel):
   
 class TaskComplete(BaseModel):
   completed : bool
+  
+class TaskActionResponse(BaseModel):
+  message : str
+  task : TaskBody
