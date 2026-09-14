@@ -1,7 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query
-from .models import Task
-from .models import Priority
-from .models import TaskResponse, TaskListResponse
+from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate
 
 app = FastAPI(
   title="Task Management API",
@@ -68,15 +66,23 @@ def get_taskById(task_id : int):
   raise HTTPException(status_code=404, detail="Task not found")
 
 @app.post("/tasks")
-def add_task(task : Task):
-  tasks.append(task)
+def add_task(task : TaskCreate):
+  new_id = len(tasks) + 1
+  new_task = Task(
+    id=new_id,
+    title=task.title,
+    description=task.description,
+    priority=task.priority,
+    due_date=task.due_date,
+    )
+  tasks.append(new_task)
   return {
     "message" : "Task added successfully",
     "task" : task
   }
 
-@app.put("/tasks/{task_id}")
-def update_task(task_id : int, task : Task):
+@app.put("/tasks/{task_id}", response_model=TaskResponse)
+def update_task(task_id : int, task : TaskUpdate):
   for old_task in tasks:
     if task_id == old_task["id"]:
       old_task["title"] = task.title
@@ -87,7 +93,7 @@ def update_task(task_id : int, task : Task):
 
       return {
         "message" : "Task Updated Successfull",\
-        "task" : task
+        "task" : old_task
       }
   
   raise HTTPException(status_code=404, detail="Task not found")
