@@ -42,3 +42,6 @@ class TaskUpdate(BaseModel):
   priority : Priority
   completed : bool
   due_date : date
+  
+class TaskComplete(BaseModel):
+  completed : bool
