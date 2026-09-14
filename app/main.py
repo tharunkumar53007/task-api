@@ -40,7 +40,7 @@ def greeting():
     "message" : "Task API is running"
   }
 
-@app.get("/tasks", response_model=TaskListResponse)
+@app.get("/tasks", response_model=TaskListResponse,status_code=200)
 def get_tasks(completed : bool | None = None, priority : Priority | None = None, search : str | None = None, skip : int = Query(0,ge=0), limit : int = Query(10,lt=100)):
   
   get_list = []
@@ -55,7 +55,7 @@ def get_tasks(completed : bool | None = None, priority : Priority | None = None,
     "tasks" : get_list[skip : skip + limit]
   }
 
-@app.get("/tasks/{task_id}",response_model=TaskResponse)
+@app.get("/tasks/{task_id}",response_model=TaskResponse, status_code=200)
 def get_taskById(task_id : int):
   for task in tasks:
     if task_id == task["id"]:
@@ -65,7 +65,7 @@ def get_taskById(task_id : int):
       }
   raise HTTPException(status_code=404, detail="Task not found")
 
-@app.post("/tasks")
+@app.post("/tasks",status_code=201)
 def add_task(task : TaskCreate):
   new_id = len(tasks) + 1
   new_task = Task(
@@ -81,7 +81,7 @@ def add_task(task : TaskCreate):
     "task" : task
   }
 
-@app.put("/tasks/{task_id}", response_model=TaskResponse)
+@app.put("/tasks/{task_id}", response_model=TaskResponse,status_code=200)
 def update_task(task_id : int, task : TaskUpdate):
   for old_task in tasks:
     if task_id == old_task["id"]:
@@ -98,20 +98,16 @@ def update_task(task_id : int, task : TaskUpdate):
   
   raise HTTPException(status_code=404, detail="Task not found")
 
-@app.delete("/tasks/{task_id}")
+@app.delete("/tasks/{task_id}", status_code=204)
 def delete_task(task_id : int):
   for task in tasks:
     if task_id == task["id"]:
       tasks.remove(task)
-
-      return {
-        "message" : "Task deleted successsfully",
-        "task" : task
-      }
+      return
   
   raise HTTPException(status_code=404, detail="Task not found")
 
-@app.patch("/tasks/{task_id}/complete", response_model=TaskResponse)
+@app.patch("/tasks/{task_id}/complete", response_model=TaskResponse, status_code=200)
 def patch_task(task_id : int, task_status : TaskComplete):
   for task in tasks:
     if task_id == task["id"]:
