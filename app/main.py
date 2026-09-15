@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse, UserLogin
+from app.auth import create_access_token
 
 app = FastAPI(
   title="Task Management API",
@@ -132,13 +133,20 @@ def register_user(user : UserCreate):
     "user" : new_user
   }
   
-@app.post("/login",status_code=200, response_model=UserActionResponse)
+@app.post("/login",status_code=200)
 def login_user(user : UserLogin):
   for user_item in users:
     if user_item.username == user.username:
       if user_item.password == user.password:
+        access_token = create_access_token(
+          {
+            "sub" : str(user_item.id)
+          }
+        )
+        
         return {
           "message" : "User login successfull",
+          "access_token" : access_token,
           "user" : user_item
         }
       else:
