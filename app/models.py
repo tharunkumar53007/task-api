@@ -49,3 +49,20 @@ class TaskComplete(BaseModel):
 class TaskActionResponse(BaseModel):
   message : str
   task : TaskBody
+  
+class User(BaseModel):
+  id : int
+  username : str
+  password : str
+  
+class UserCreate(BaseModel):
+  username : str
+  password : str
+  
+class UserLogin(BaseModel):
+  username : str
+  password : str
+  
+class UserActionResponse(BaseModel):
+  message : str
+  user : User

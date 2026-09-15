@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query
-from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse
+from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse, UserLogin
 
 app = FastAPI(
   title="Task Management API",
@@ -33,6 +33,7 @@ tasks = [
     "due_date": "2026-09-21"
   }
 ]
+users = []
 
 @app.get("/")
 def greeting():
@@ -120,3 +121,27 @@ def patch_task(task_id : int, task_status : TaskComplete):
   
   raise HTTPException(status_code=404, detail="Task not found")
 
+@app.post("/register", status_code=200, response_model=UserActionResponse)
+def register_user(user : UserCreate):
+  new_id = len(users) + 1
+  new_user = User(id=new_id, username=user.username, password=user.password)
+  users.append(new_user)
+  
+  return {
+    "message" : "User created successfully",
+    "user" : new_user
+  }
+  
+@app.post("/login",status_code=200, response_model=UserActionResponse)
+def login_user(user : UserLogin):
+  for user_item in users:
+    if user_item.username == user.username:
+      if user_item.password == user.password:
+        return {
+          "message" : "User login successfull",
+          "user" : user_item
+        }
+      else:
+        raise HTTPException(status_code=401, detail="Password incorrect")
+  
+  raise HTTPException(status_code=404, detail="User not found")
