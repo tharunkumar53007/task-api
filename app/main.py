@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException, Query
-from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse, UserLogin
-from app.auth import create_access_token
+from fastapi import FastAPI, HTTPException, Query, Depends
+from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse
+from app.auth import create_access_token, get_current_user
+from app.database import tasks, users
+from fastapi.security import OAuth2PasswordRequestForm
 
 app = FastAPI(
   title="Task Management API",
@@ -8,33 +10,6 @@ app = FastAPI(
   version="1.0.0"
 )
 
-tasks = [
-  {
-    "id": 8,
-    "title": "Call Parents",
-    "description": "Catch up with mom and dad",
-    "priority": "medium",
-    "completed": True,
-    "due_date": "2026-09-12"
-  },
-  {
-    "id": 9,
-    "title": "Clean the House",
-    "description": "Vacuum, dust, and organize the living room",
-    "priority": "low",
-    "completed": False,
-    "due_date": "2026-09-19"
-  },
-  {
-    "id": 10,
-    "title": "Prepare Presentation",
-    "description": "Create slides for the client pitch",
-    "priority": "high",
-    "completed": False,
-    "due_date": "2026-09-21"
-  }
-]
-users = []
 
 @app.get("/")
 def greeting():
@@ -43,7 +18,7 @@ def greeting():
   }
 
 @app.get("/tasks", response_model=TaskListResponse,status_code=200)
-def get_tasks(completed : bool | None = None, priority : Priority | None = None, search : str | None = None, skip : int = Query(0,ge=0), limit : int = Query(10,lt=100)):
+def get_tasks(completed : bool | None = None, priority : Priority | None = None, search : str | None = None, skip : int = Query(0,ge=0), limit : int = Query(10,lt=100), current_user: dict = Depends(get_current_user)):
   
   get_list = []
   for task in tasks:
@@ -134,7 +109,7 @@ def register_user(user : UserCreate):
   }
   
 @app.post("/login",status_code=200)
-def login_user(user : UserLogin):
+def login_user(user : OAuth2PasswordRequestForm = Depends()):
   for user_item in users:
     if user_item.username == user.username:
       if user_item.password == user.password:
