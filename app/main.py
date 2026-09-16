@@ -22,11 +22,12 @@ def get_tasks(completed : bool | None = None, priority : Priority | None = None,
   
   get_list = []
   for task in tasks:
-   if (
-     (completed is None or task["completed"] == completed) and
-     (priority is None or task["priority"] == priority) and
-     (search is None or search.lower() in task["title"].lower() or search.lower() in task["description"].lower())):
-        get_list.append(task)
+    if task.user_id == current_user.id:
+      if (
+        (completed is None or task["completed"] == completed) and
+        (priority is None or task["priority"] == priority) and
+        (search is None or search.lower() in task["title"].lower() or search.lower() in task["description"].lower())):
+            get_list.append(task)
         
   return {
     "tasks" : get_list[skip : skip + limit]
@@ -43,10 +44,11 @@ def get_taskById(task_id : int):
   raise HTTPException(status_code=404, detail="Task not found")
 
 @app.post("/tasks",response_model=TaskActionResponse, status_code=201)
-def add_task(task : TaskCreate):
+def add_task(task : TaskCreate, current_user: dict = Depends(get_current_user)):
   new_id = len(tasks) + 1
   new_task = Task(
     id=new_id,
+    user_id=current_user.id,
     title=task.title,
     description=task.description,
     priority=task.priority,
