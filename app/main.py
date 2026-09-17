@@ -34,13 +34,13 @@ def get_tasks(completed : bool | None = None, priority : Priority | None = None,
   }
 
 @app.get("/tasks/{task_id}",response_model=TaskResponse, status_code=200)
-def get_taskById(task_id : int):
+def get_taskById(task_id : int,current_user :dict = Depends(get_current_user)):
   for task in tasks:
-    if task_id == task["id"]:
-      return {
-        "message" : "Task found successfully",
-        "task" : task
-      }
+      if task_id == task.id and task.user_id == current_user.id:
+        return {
+          "message" : "Task found successfully",
+          "task" : task
+        }
   raise HTTPException(status_code=404, detail="Task not found")
 
 @app.post("/tasks",response_model=TaskActionResponse, status_code=201)
@@ -61,41 +61,41 @@ def add_task(task : TaskCreate, current_user: dict = Depends(get_current_user)):
   }
 
 @app.put("/tasks/{task_id}", response_model=TaskActionResponse,status_code=200)
-def update_task(task_id : int, task : TaskUpdate):
+def update_task(task_id : int, task : TaskUpdate, current_user : dict = Depends(get_current_user)):
   for old_task in tasks:
-    if task_id == old_task["id"]:
-      old_task["title"] = task.title
-      old_task["description"] = task.description
-      old_task["priority"] = task.priority
-      old_task["completed"] = task.completed
-      old_task["due_date"] = task.due_date
+      if task_id == old_task.id and old_task.user_id == current_user.id:
+        old_task.title = task.title
+        old_task.description = task.description
+        old_task.priority = task.priority
+        old_task.completed = task.completed
+        old_task.due_date = task.due_date
 
-      return {
-        "message" : "Task Updated Successfull",\
-        "task" : old_task
-      }
+        return {
+          "message" : "Task Updated Successfull",\
+          "task" : old_task
+        }
   
   raise HTTPException(status_code=404, detail="Task not found")
 
 @app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id : int):
+def delete_task(task_id : int, current_user : dict = Depends(get_current_user)):
   for task in tasks:
-    if task_id == task["id"]:
-      tasks.remove(task)
-      return
+      if task_id == task.id and task.user_id == current_user.id:
+        tasks.remove(task)
+        return
   
   raise HTTPException(status_code=404, detail="Task not found")
 
 @app.patch("/tasks/{task_id}/complete", response_model=TaskActionResponse, status_code=200)
-def patch_task(task_id : int, task_status : TaskComplete):
+def patch_task(task_id : int, task_status : TaskComplete, current_user : dict = Depends(get_current_user)):
   for task in tasks:
-    if task_id == task["id"]:
-      task["completed"] = task_status.completed
+      if task_id == task.id and task.user_id == current_user.id:
+        task.completed = task_status.completed
 
-      return {
-        "message" : "Task status updated",
-        "task" : task
-      }
+        return {
+          "message" : "Task status updated",
+          "task" : task
+        }
   
   raise HTTPException(status_code=404, detail="Task not found")
 
