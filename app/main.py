@@ -1,8 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query, Depends
 from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse
 from app.auth import create_access_token, get_current_user
-from app.database import tasks, users
+from app.database import tasks, users, get_db
 from fastapi.security import OAuth2PasswordRequestForm
+from app.database import Base, engine
+from app.models import TaskDB
+from sqlalchemy.orm import Session
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
   title="Task Management API",
@@ -17,21 +22,23 @@ def greeting():
     "message" : "Task API is running"
   }
 
-@app.get("/tasks", response_model=TaskListResponse,status_code=200)
-def get_tasks(completed : bool | None = None, priority : Priority | None = None, search : str | None = None, skip : int = Query(0,ge=0), limit : int = Query(10,lt=100), current_user: dict = Depends(get_current_user)):
+@app.get("/tasks",status_code=200)
+def get_tasks(completed : bool | None = None, priority : Priority | None = None, search : str | None = None, skip : int = Query(0,ge=0), limit : int = Query(10,lt=100), current_user: dict = Depends(get_current_user), db:Session = Depends(get_db)):
   
-  get_list = []
-  for task in tasks:
-    if task.user_id == current_user.id:
-      if (
-        (completed is None or task["completed"] == completed) and
-        (priority is None or task["priority"] == priority) and
-        (search is None or search.lower() in task["title"].lower() or search.lower() in task["description"].lower())):
-            get_list.append(task)
+  tasksall = db.query(TaskDB).all()
+  return tasksall
+  # get_list = []
+  # for task in tasks:
+  #   if task.user_id == current_user.id:
+  #     if (
+  #       (completed is None or task["completed"] == completed) and
+  #       (priority is None or task["priority"] == priority) and
+  #       (search is None or search.lower() in task["title"].lower() or search.lower() in task["description"].lower())):
+  #           get_list.append(task)
         
-  return {
-    "tasks" : get_list[skip : skip + limit]
-  }
+  # return {
+  #   "tasks" : get_list[skip : skip + limit]
+  # }
 
 @app.get("/tasks/{task_id}",response_model=TaskResponse, status_code=200)
 def get_taskById(task_id : int,current_user :dict = Depends(get_current_user)):
@@ -44,9 +51,9 @@ def get_taskById(task_id : int,current_user :dict = Depends(get_current_user)):
   raise HTTPException(status_code=404, detail="Task not found")
 
 @app.post("/tasks",response_model=TaskActionResponse, status_code=201)
-def add_task(task : TaskCreate, current_user: dict = Depends(get_current_user)):
+def add_task(task : TaskCreate, current_user: dict = Depends(get_current_user), db : Session = Depends(get_db)):
   new_id = len(tasks) + 1
-  new_task = Task(
+  new_task = TaskDB(
     id=new_id,
     user_id=current_user.id,
     title=task.title,
@@ -54,7 +61,11 @@ def add_task(task : TaskCreate, current_user: dict = Depends(get_current_user)):
     priority=task.priority,
     due_date=task.due_date,
     )
-  tasks.append(new_task)
+  # tasks.append(new_task)
+  db.add(new_task)
+  db.commit()
+  db.refresh(new_task)
+  
   return {
     "message" : "Task created successfully",
     "task" : new_task

@@ -1,6 +1,21 @@
 from pydantic import BaseModel, Field
 from enum import Enum
 from datetime import date
+from sqlalchemy import Boolean, Integer,String, Date
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+
+class TaskDB(Base):
+  __tablename__ = "tasks"
+  
+  id: Mapped[int] = mapped_column(Integer, primary_key=True)
+  user_id: Mapped[int] = mapped_column(Integer)
+  title: Mapped[int] = mapped_column(String(100))
+  description: Mapped[str] = mapped_column(String(500))
+  priority: Mapped[str] = mapped_column(String(10))
+  completed: Mapped[bool] = mapped_column(Boolean, default=False)
+  due_date: Mapped[date] = mapped_column(Date)
 
 class Priority(str, Enum):
   LOW = "low"
