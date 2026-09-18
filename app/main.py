@@ -100,13 +100,19 @@ def update_task(task_id : int, updated_task : TaskUpdate, current_user : dict = 
   
 
 @app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id : int, current_user : dict = Depends(get_current_user)):
-  for task in tasks:
-      if task_id == task.id and task.user_id == current_user.id:
-        tasks.remove(task)
-        return
+def delete_task(task_id : int, current_user : dict = Depends(get_current_user), db:Session = Depends(get_db)):
+  # for task in tasks:
+  #     if task_id == task.id and task.user_id == current_user.id:
+  #       tasks.remove(task)
+  #       return
+  task = db.query(TaskDB).filter(task_id == TaskDB.id, current_user.id == TaskDB.user_id).first()
   
-  raise HTTPException(status_code=404, detail="Task not found")
+  if task is None:
+    raise HTTPException(status_code=404, detail="Task not found")
+
+  db.delete(task)
+  db.commit()
+  return
 
 @app.patch("/tasks/{task_id}/complete", response_model=TaskActionResponse, status_code=200)
 def patch_task(task_id : int, task_status : TaskComplete, current_user : dict = Depends(get_current_user)):
