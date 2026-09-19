@@ -2,7 +2,9 @@ from jose import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException
-from app.database import users
+from app.database import get_db
+from sqlalchemy.orm import Session
+from app.models import UserDB
 
 SECRET_KEY = "tharunsecure53007"
 ALGORITHM = "HS256"
@@ -25,11 +27,12 @@ def verify_token(token : str):
   
   return payload
 
-def get_current_user(token : str = Depends(oauth2_scheme)):
+def get_current_user(token : str = Depends(oauth2_scheme), db : Session = Depends(get_db)):
   payload = verify_token(token=token)
   user_id = int(payload["sub"])
-  for user in users:
-    if user_id == user.id:
-      return user
   
-  raise HTTPException(status_code=401, detail="User not found")
+  current_user = db.query(UserDB).filter(UserDB.id == user_id).first()
+  if not current_user:
+    raise HTTPException(status_code=401, detail="User not found")
+  
+  return current_user

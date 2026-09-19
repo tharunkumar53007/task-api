@@ -1,10 +1,10 @@
 from fastapi import FastAPI, HTTPException, Query, Depends
-from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse
+from .models import Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse
 from app.auth import create_access_token, get_current_user
-from app.database import users, get_db
+from app.database import get_db
 from fastapi.security import OAuth2PasswordRequestForm
 from app.database import Base, engine
-from app.models import TaskDB
+from app.models import TaskDB, UserDB
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -133,10 +133,13 @@ def patch_task(task_id : int, task_status : TaskComplete, current_user : dict = 
   
 
 @app.post("/register", status_code=200, response_model=UserActionResponse)
-def register_user(user : UserCreate):
-  new_id = len(users) + 1
-  new_user = User(id=new_id, username=user.username, password=user.password)
-  users.append(new_user)
+def register_user(user : UserCreate, db: Session = Depends(get_db)):
+  
+  new_user = UserDB(username = user.username, password = user.password)
+  
+  db.add(new_user)
+  db.commit()
+  db.refresh(new_user)
   
   return {
     "message" : "User created successfully",
@@ -144,22 +147,23 @@ def register_user(user : UserCreate):
   }
   
 @app.post("/login",status_code=200)
-def login_user(user : OAuth2PasswordRequestForm = Depends()):
-  for user_item in users:
-    if user_item.username == user.username:
-      if user_item.password == user.password:
-        access_token = create_access_token(
-          {
-            "sub" : str(user_item.id)
-          }
+def login_user(user : OAuth2PasswordRequestForm = Depends(), db : Session = Depends(get_db)):
+
+   current_user = db.query(UserDB).filter(UserDB.username == user.username).first()
+   if not current_user:
+     raise HTTPException(status_code=401, detail="user not found")
+   if current_user.password != user.password:
+     raise HTTPException(status_code=401, detail="Incorrect username or password")
+   access_token = create_access_token(
+      {
+      "sub" : str(current_user.id)
+      }
         )
         
-        return {
+   return {
           "message" : "User login successfull",
           "access_token" : access_token,
-          "user" : user_item
+          "user" : current_user
         }
-      else:
-        raise HTTPException(status_code=401, detail="Password incorrect")
+      
   
-  raise HTTPException(status_code=404, detail="User not found")
