@@ -1,4 +1,3 @@
-tasks = []
 users = []
 
 from sqlalchemy import create_engine

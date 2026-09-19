@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException, Query, Depends
 from .models import Task, Priority, TaskResponse, TaskListResponse, TaskCreate, TaskUpdate, TaskComplete, TaskActionResponse, UserCreate, User, UserActionResponse
 from app.auth import create_access_token, get_current_user
-from app.database import tasks, users, get_db
+from app.database import users, get_db
 from fastapi.security import OAuth2PasswordRequestForm
 from app.database import Base, engine
 from app.models import TaskDB
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 Base.metadata.create_all(bind=engine)
 
@@ -25,25 +26,29 @@ def greeting():
 @app.get("/tasks",status_code=200)
 def get_tasks(completed : bool | None = None, priority : Priority | None = None, search : str | None = None, skip : int = Query(0,ge=0), limit : int = Query(10,lt=100), current_user: dict = Depends(get_current_user), db:Session = Depends(get_db)):
   
-  usertasks = db.query(TaskDB).filter(TaskDB.user_id == current_user.id).all()
-  return usertasks
-  # get_list = []
-  # for task in tasks:
-  #   if task.user_id == current_user.id:
-  #     if (
-  #       (completed is None or task["completed"] == completed) and
-  #       (priority is None or task["priority"] == priority) and
-  #       (search is None or search.lower() in task["title"].lower() or search.lower() in task["description"].lower())):
-  #           get_list.append(task)
-        
-  # return {
-  #   "tasks" : get_list[skip : skip + limit]
-  # }
+  query = db.query(TaskDB).filter(TaskDB.user_id == current_user.id)
+  if completed is not None:
+    query = query.filter(TaskDB.completed == completed)
+  
+  if priority is not None:
+    query = query.filter(TaskDB.priority == priority)
+    
+  if search:
+    query = query.filter(
+      or_(
+        TaskDB.title.ilike(f"%{search}%"),
+        TaskDB.description.ilike(f"%{search}%")
+      )
+    )
+  
+  query = query.offset(skip).limit(limit=limit)
+  tasks = query.all()
+  return tasks
+  
 
 @app.get("/tasks/{task_id}",response_model=TaskResponse, status_code=200)
 def get_taskById(task_id : int,current_user :dict = Depends(get_current_user), db : Session = Depends(get_db)):
-  # for task in tasks:
-  #     if task_id == task.id and task.user_id == current_user.id:
+  
   task = db.query(TaskDB).filter(task_id == TaskDB.id, TaskDB.user_id == current_user.id).first()
   if task is None:
     raise HTTPException(status_code=404, detail="Task not found")
@@ -64,7 +69,7 @@ def add_task(task : TaskCreate, current_user: dict = Depends(get_current_user), 
     priority=task.priority.value,
     due_date=task.due_date,
     )
-  # tasks.append(new_task)
+  
   db.add(new_task)
   db.commit()
   db.refresh(new_task)
@@ -76,8 +81,7 @@ def add_task(task : TaskCreate, current_user: dict = Depends(get_current_user), 
 
 @app.put("/tasks/{task_id}", response_model=TaskActionResponse,status_code=200)
 def update_task(task_id : int, updated_task : TaskUpdate, current_user : dict = Depends(get_current_user), db: Session = Depends(get_db)):
-  # for old_task in tasks:
-  #     if task_id == old_task.id and old_task.user_id == current_user.id:
+ 
   task = db.query(TaskDB).filter(task_id == TaskDB.id, current_user.id == TaskDB.user_id).first()
   
   if task is None:
@@ -101,10 +105,7 @@ def update_task(task_id : int, updated_task : TaskUpdate, current_user : dict = 
 
 @app.delete("/tasks/{task_id}", status_code=204)
 def delete_task(task_id : int, current_user : dict = Depends(get_current_user), db:Session = Depends(get_db)):
-  # for task in tasks:
-  #     if task_id == task.id and task.user_id == current_user.id:
-  #       tasks.remove(task)
-  #       return
+ 
   task = db.query(TaskDB).filter(task_id == TaskDB.id, current_user.id == TaskDB.user_id).first()
   
   if task is None:
@@ -115,17 +116,21 @@ def delete_task(task_id : int, current_user : dict = Depends(get_current_user), 
   return
 
 @app.patch("/tasks/{task_id}/complete", response_model=TaskActionResponse, status_code=200)
-def patch_task(task_id : int, task_status : TaskComplete, current_user : dict = Depends(get_current_user)):
-  for task in tasks:
-      if task_id == task.id and task.user_id == current_user.id:
-        task.completed = task_status.completed
-
-        return {
-          "message" : "Task status updated",
-          "task" : task
+def patch_task(task_id : int, task_status : TaskComplete, current_user : dict = Depends(get_current_user), db: Session = Depends(get_db)):
+  task = db.query(TaskDB).filter(task_id == TaskDB.id, current_user.id == TaskDB.user_id).first()
+  
+  if task is None:
+    raise HTTPException(status_code=404, detail="Task not found")
+  
+  task.completed = task_status.completed
+  
+  db.commit()
+  db.refresh(task)
+  return {
+        "message" : "Task status updated",
+        "task" : task
         }
   
-  raise HTTPException(status_code=404, detail="Task not found")
 
 @app.post("/register", status_code=200, response_model=UserActionResponse)
 def register_user(user : UserCreate):
